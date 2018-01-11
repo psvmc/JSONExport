@@ -76,10 +76,7 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
     var selectedLang : LangModel!
     
     //Returns the title of the selected language in the languagesPopup
-    var selectedLanguageName : String
-    {
-        return languagesPopup.titleOfSelectedItem!
-    }
+    var selectedLanguageName : String!
     
     //Should hold list of supported languages, where the key is the language name and the value is LangModel instance
     var langs : [String : LangModel] = [String : LangModel]()
@@ -88,9 +85,11 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
     var files : [FileRepresenter] = [FileRepresenter]()
     
     override func viewDidLoad() {
+        selectedLanguageName = languagesPopup.titleOfSelectedItem!;
         super.viewDidLoad()
         saveButton.isEnabled = false
         sourceText.isAutomaticQuoteSubstitutionEnabled = false
+       
         loadSupportedLanguages()
         setupNumberedTextView()
         setLanguagesSelection()
@@ -119,7 +118,9 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
         scrollView.hasVerticalRuler = true
         scrollView.verticalRulerView = lineNumberView
         scrollView.rulersVisible = true
-        sourceText.font = NSFont.userFixedPitchFont(ofSize: NSFont.smallSystemFontSize())
+        sourceText.font = NSFont.userFixedPitchFont(ofSize: 14)
+        sourceText.backgroundColor = NSColor.textBackgroundColor
+        sourceText.textColor = NSColor.darkGray
         
     }
     
@@ -185,7 +186,7 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
     {
         let jsonString = String(data: jsonData, encoding: .utf8)
         
-        sourceText.string = jsonString
+        sourceText.string = jsonString!
     }
     
     //MARK: - Handlind events
@@ -198,10 +199,8 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
         oPanel.allowsMultipleSelection = false
         oPanel.allowedFileTypes = ["json","JSON"]
         oPanel.prompt = "Choose JSON file"
-        
-        oPanel.beginSheetModal(for: self.view.window!, completionHandler: { (button : Int) -> Void in
-            if button == NSFileHandlingPanelOKButton{
-                
+        oPanel.beginSheetModal(for: self.view.window!) { (button) in
+            if button.rawValue == NSFileHandlingPanelOKButton{
                 let jsonPath = oPanel.urls.first!.path
                 let fileHandle = FileHandle(forReadingAtPath: jsonPath)
                 let urlStr:String  = oPanel.urls.first!.lastPathComponent
@@ -209,7 +208,8 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
                 self.parseJSONData(jsonData: (fileHandle!.readDataToEndOfFile() as NSData!) as Data!)
                 
             }
-        }) 
+        }
+        
     }
     
     
@@ -259,12 +259,9 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
         generateClasses()
     }
     
-    
-    //MARK: - Language selection handling
-    func loadSelectedLanguageModel()
-    {
-        selectedLang = langs[selectedLanguageName]
-        
+    func loadSelectedLanguageModel(){
+        self.selectedLanguageName = self.languagesPopup.titleOfSelectedItem!;
+        self.selectedLang = self.langs[self.selectedLanguageName]
     }
     
     
@@ -286,14 +283,15 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
         openPanel.canChooseDirectories = true
         openPanel.canCreateDirectories = true
         openPanel.prompt = "Choose"
-        openPanel.beginSheetModal(for: self.view.window!, completionHandler: { (button : Int) -> Void in
-            if button == NSFileHandlingPanelOKButton{
+        openPanel.beginSheetModal(for: self.view.window!) { (button) in
+            if button.rawValue == NSFileHandlingPanelOKButton{
                 
                 self.saveToPath(openPanel.url!.path)
                 
                 self.showDoneSuccessfully()
             }
-        })
+        }
+     
     }
     
     
@@ -373,7 +371,7 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
     func showSuccessStatus(_ successMessage: String)
     {
         
-        statusTextField.textColor = NSColor.green
+        statusTextField.textColor = NSColor.brown
         statusTextField.stringValue = successMessage
     }
     
@@ -386,9 +384,8 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
     func generateClasses()
     {
         saveButton.isEnabled = false
-        var str = sourceText.string!
-        
-        if str.characters.count == 0{
+        var str = sourceText.string
+        if str.count == 0{
             runOnUiThread{
                 //Nothing to do, just clear any generated files
                 self.files.removeAll(keepingCapacity: false)
@@ -397,7 +394,7 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
             return;
         }
         var rootClassName = classNameField.stringValue
-        if rootClassName.characters.count == 0{
+        if rootClassName.count == 0{
             rootClassName = "RootClass"
         }
         sourceText.isEditable = false
@@ -415,15 +412,16 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
                     }else{
                         json = unionDictionaryFromArrayElements(jsonData as! NSArray)
                     }
-                    self.loadSelectedLanguageModel()
-                    self.files.removeAll(keepingCapacity: false)
+                    
                     runOnUiThread{
+                        self.loadSelectedLanguageModel()
+                        self.files.removeAll(keepingCapacity: false)
                         let fileGenerator = self.prepareAndGetFilesBuilder()
                         fileGenerator.addFileWithName(&rootClassName, jsonObject: json, files: &self.files)
                         fileGenerator.fixReferenceMismatches(inFiles: self.files)
                         self.files = Array(self.files.reversed())
                         self.sourceText.isEditable = true
-                        self.showSuccessStatus("Valid JSON structure")
+                        self.showSuccessStatus("JSON验证通过")
                         self.saveButton.isEnabled = true
                         
                         self.tableView.reloadData()
@@ -437,7 +435,7 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
                         if error != nil{
                             print(error!)
                         }
-                        self.showErrorStatus("It seems your JSON object is not valid!")
+                        self.showErrorStatus("JSON格式错误")
                     })
                     
                 } catch {
@@ -455,8 +453,8 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
     func prepareAndGetFilesBuilder() -> FilesContentBuilder
     {
         let filesBuilder = FilesContentBuilder.instance
-        filesBuilder.includeConstructors = (generateConstructors.state == NSOnState)
-        filesBuilder.includeUtilities = (generateUtilityMethods.state == NSOnState)
+        filesBuilder.includeConstructors = (generateConstructors.state == .on)
+        filesBuilder.includeUtilities = (generateUtilityMethods.state == .off)
         filesBuilder.firstLine = firstLineField.stringValue
         filesBuilder.lang = selectedLang!
         filesBuilder.classPrefix = classPrefixField.stringValue
@@ -473,18 +471,22 @@ class ViewController: NSViewController, NSUserNotificationCenterDelegate, NSTabl
         return files.count
     }
     
+    func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+        return 560;
+    }
+    
     
     //MARK: - NSTableViewDelegate
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView?
     {
-        let cell = tableView.make(withIdentifier: "fileCell", owner: self) as! FilePreviewCell
+        let cell = tableView.makeView(withIdentifier: NSUserInterfaceItemIdentifier(rawValue: "fileCell"), owner: self) as! FilePreviewCell
         let file = files[row]
         cell.file = file
-        
         return cell
     }
     
-    
-    
+    func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
+        return false;
+    }
 }
 

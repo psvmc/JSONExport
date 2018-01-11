@@ -259,8 +259,6 @@ class FilesContentBuilder{
     {
         let nativePropertyName = propertyNativeName(jsonKeyName)
         var type = propertyTypeName(value, lang:lang)
-//        var isDictionary = false
-//        var isArray = false
         
         var property: Property!
         if value is NSDictionary {
