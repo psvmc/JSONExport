@@ -921,6 +921,9 @@
                             </textField>
                             <popUpButton horizontalHuggingPriority="249" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="Au9-Q1-2Pe" userLabel="Languages">
                                 <rect key="frame" x="843" y="6" width="119" height="26"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" relation="greaterThanOrEqual" constant="80" id="o64-cR-9tG"/>
+                                </constraints>
                                 <popUpButtonCell key="cell" type="push" title="Swift Classes" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="Wf6-Cp-ZQz" id="qMa-Ko-088">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="menu"/>
